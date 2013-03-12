@@ -1,0 +1,464 @@
+/*
+ Carly Moss
+ moss.ca@husky.neu.edu
+ */
+
+
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.NoSuchElementException;
+
+
+public abstract class FMap<K,V> implements Iterable<K> {
+  // isEmpty: is this FMap empty?
+  public abstract boolean isEmpty();
+  // size: calculate the size of this FMap
+  public abstract int size();
+  // containsKey: does this FMap contain the given key x? 
+  public abstract boolean containsKey(K x);
+  // get: gets the value of type V mapped to given Key x
+  public abstract V get (K x);
+  // remove: removes an entry in an FMap mapped to a given key K
+  //method added to preserve invariant that states the most recently added
+  //  key and value shadows any previous entry mapped to that same key
+  abstract FMap<K,V> remove (K x);
+  // getKey: gets the top key out of this FMap
+  abstract K getKey();
+  // getRest: gets the "rest" of this FMap
+  abstract FMap<K,V> getRest();
+  // hasComparator: does this FMap have a comparator?
+  abstract boolean hasComparator();
+  // getComparator: gets the Comparator out of this FMap
+  abstract Comparator<? super K> getComparator();
+  // insert: inserts K key and V value into this FMap
+  // invariant: should only be used in BST implementation
+  // invariant: will insert everything in a sorted way
+  abstract FMap<K,V> insert(K k, V v);
+  // emptyMap: produces a new EmptyMap of given type K,V
+  public static <K,V> FMap<K,V> emptyMap(){
+    return new EmptyMap<K,V>();
+  }
+  // emptyMap: produces a new Empty
+  public static <K,V> FMap <K,V> emptyMap(Comparator <? super K> c){
+    return new Leaf<K,V>(c);
+  }
+  //add: produces a new Add of given type K,V with given Key k and Value v
+  // along with this FMap
+  // preserves invariant that states the most recently added key and value
+  // shadows (and erases) any previous entry mapped to that same key
+  public FMap <K, V> add (K k, V v){
+    if (this.hasComparator()){
+      return this.insert(k,v);
+    } else if (this.containsKey(k)){
+      return new Add<K,V> (this.remove(k), k, v);
+    } else {
+      return new Add<K,V> (this, k, v);
+    }
+  }
+  //toString: produces a String that represents this FMap
+  public String toString (){
+    return "{...(" + Integer.toString(this.size()) + " entries)...}";
+  }
+  // equals: is this FMap equal to the given Object o ?
+  @Override
+  public boolean equals (Object o){
+    if (!(o instanceof FMap)) {
+      return false;
+    } else {
+      @SuppressWarnings(value = "unchecked")
+      FMap<K,V> f2 = (FMap<K,V>) o; 
+      if (this.isEmpty() && f2.isEmpty()) {                 
+        return true;
+      } else if (f2.isEmpty()){
+        return false;
+      } else if (this.isEmpty()){
+        return false;
+      } else 
+        return this.forEqualKey(f2)&&f2.forEqualKey(this)
+          && this.forEqualGet(f2);
+    }
+  }
+  // forEqualKey: helper function for equals method to see if each key 
+  // in this FMap is contained in another FMap f2
+  public boolean forEqualKey(FMap<K,V> f2){
+    ArrayList<K> theseKeys = this.itHelper();
+    ArrayList<K> thoseKeys = f2.itHelper();
+    return theseKeys.containsAll(thoseKeys);
+      }
+    
+  //forEqualGet: helper function for equals method checks that each key is 
+  //mapped to the same value in two FMaps, this and the given one f
+  public boolean forEqualGet(FMap<K,V> f2){
+    ArrayList<K> Keys = this.itHelper();
+    while (!(Keys.isEmpty())){
+      K key = Keys.get(0);
+      if (!(this.get(key).equals(f2.get(key)))) {
+        return false;
+      }
+      Keys.remove(0);
+    } return true;
+  }
+    
+        
+      
+    
+  // hashCode: produces the hash code for this FMap
+  public int hashCode (){
+     if (this.isEmpty()){
+       return 0;
+     } if (this.hasComparator()) {
+       Node<K,V> n1 = (Node<K,V>) this;
+       K key = n1.key;
+       V value = n1.value;
+       return key.hashCode()*value.hashCode() + n1.left.hashCode() 
+           + n1.right.hashCode();
+     }
+       else {
+       Add<K,V> a1 = (Add<K,V>) this;
+       K key = a1.key;
+       V value = a1.value;
+       return key.hashCode()*value.hashCode() + a1.dict.hashCode();
+     }
+   }
+  // itHelper: Makes the array list for the the iterator
+  public ArrayList<K> itHelper(){
+    return this.itHelper();
+  }
+  //iterator: creates the iterator for this FMap
+  public Iterator<K> iterator(){
+    return new KIterator<K>(this.itHelper());
+  }
+  // iterator: creates the iterator for this FMap that is sorted according
+  // to the given Comparator c
+  public Iterator<K> iterator(Comparator<? super K> c){
+    ArrayList<K> array = this.itHelper();
+    Collections.sort(array, c);
+    return new KIterator<K>(array);
+  }
+
+}
+
+//class representing an Empty FMap
+class EmptyMap<K,V> extends FMap<K,V>{
+  EmptyMap(){};
+  //isEmpty: is this EmptyMap empty?
+  public boolean isEmpty() {
+    return true;
+  }
+
+  //size: calculate the size of this EmptyMap
+  public int size() {
+    return 0;
+  }
+  //containsKey: does this EmptyMap contain the given key x?  
+  public boolean containsKey(K x) {
+    return false;
+  }
+
+  //get: gets the value of type V mapped to given Key x
+  public V get(K x) {
+    throw 
+     new RuntimeException("called get on an EmptyMap, no such value");
+  }
+  // remove: Removes given entry from this EmptyMap mapped to given Key x
+  FMap<K, V> remove(K x) {
+    throw 
+    new RuntimeException("called remove on an EmptyMap, no such value");
+  }
+  // getKey: gets the Key out of this EmptyMap
+  K getKey() {
+    throw 
+    new RuntimeException("called getKey on an EmptyMap, no such value");
+  }
+  // getRest: gets the Rest from this EmptyMap
+  FMap<K,V> getRest() {
+    throw 
+    new RuntimeException("called getRest on an EmptyMap, no such value");
+  }
+  // hasComparator : does this EmptyMap have a comparator?
+  boolean hasComparator() {
+     return false;
+  }
+  // getComparator: gets the Comparator out of this EmptyMap 
+  Comparator<? super K> getComparator() {
+    throw 
+    new RuntimeException("called getComparator on an EmptyMap, " +
+    		"no such value");
+  }
+  // insert: inserts K key and V value into this EmptyMap
+  FMap<K, V> insert(K k, V v) {
+    throw new RuntimeException("called insert on an EmptyMap, not a BST");
+  }
+  // itHelper: produces a list of Keys for the iterator for this EmptyMap
+  public ArrayList<K> itHelper(){
+    return new ArrayList<K>();
+  }
+}
+
+//class represent a nonEmpty FMap
+class Add<K,V> extends FMap<K,V>{
+  FMap<K,V> dict; // the "rest" of this FMap of type <K,V>
+  K key; // the current Key of type K in this FMap
+  V value; // the current Value of type V in this FMap
+  Add(FMap<K,V> dict, K key, V value){
+    this.dict=dict;
+    this.key=key;
+    this.value=value;
+  }
+  //isEmpty: is this Add empty?  
+  public boolean isEmpty() {
+    return false;
+  }
+  // size: calculate the size of this Add
+   public int size() {
+     return 1 + this.dict.size();
+  }
+  // containsKey: does this Add contain the given key x?
+  public boolean containsKey(K x) {
+    if (this.key.equals(x)){
+      return true;
+    } return this.dict.containsKey(x);
+  }
+  // get: gets the value of type V mapped to given Key x
+  public V get(K x) {
+    if (this.key.equals(x)) {
+      return this.value;
+    } return this.dict.get(x);
+  }
+  // remove: Removes given entry from this Add mapped to given Key x
+  FMap<K,V> remove(K x) {
+    if (this.key.equals(x)) {
+      return this.dict;
+      } return this.dict.remove(x).add( this.key, this.value);
+  }
+  //getKey: gets the Key out of this Add
+  K getKey() {
+    return this.key;
+  }
+  //getRest: gets the "rest" of this Add
+  FMap<K,V> getRest() {
+    return this.dict;
+  }
+  //hasComparator: does this Add have a comparator?
+  boolean hasComparator() {
+    return false;
+  }
+  //getComparator: gets the comparator out of this Add
+  Comparator<? super K> getComparator() {
+    throw 
+    new RuntimeException("called getComparator on an Add, " +
+        "no such value");
+  }
+  // insert: inserts K key and V value into this Add
+  FMap<K, V> insert(K k, V v) {
+    throw new RuntimeException("called insert on an Add, not a BST");
+  }
+  
+  // itHelper: produces a list of Keys for the iterator for this Add
+  public ArrayList<K> itHelper(){
+      ArrayList<K> listOfKeys = new ArrayList<K>();
+      listOfKeys.add(this.key);
+      listOfKeys.addAll(this.dict.itHelper());
+      return listOfKeys;
+  }
+}
+
+// class representing the Iterator for the FMap class
+class KIterator<K> implements Iterator<K> {
+  int i; // the index where you are currently "at" in the iterator
+  ArrayList<K> list; //stores the list of k's 
+  KIterator(ArrayList<K> a){
+    i = 0;
+    this.list = a;
+  }
+  // does this KIterator have a next element?
+  public boolean hasNext() {
+   return (this.i<(this.list.size())); 
+  }
+
+  // produces the next element in this KIterator
+  public K next() {
+    if (! (this.hasNext())) {
+      throw new NoSuchElementException("no next element");
+    }
+    K nextK = this.list.get(this.i);
+    i = this.i+1;
+    return nextK;
+    
+  }
+
+  // removes an element from this KIterator
+  public void remove() {
+    throw 
+    new UnsupportedOperationException("not implementing this method");
+    
+  }
+  
+}
+
+
+//A BST is either an:
+// - empty Leaf that stores only a comparator
+// - Node with a Key and a Value at the "top" and left and right values
+// that are also BSTs
+
+// class representing an empty FMap with a comparator 
+// that is represented by a Leaf in a BST in order to be more efficient
+class Leaf<K,V> extends FMap<K,V>{
+  Comparator<? super K> c; // represents the comparator that is needed to 
+  // sort this BST  
+  Leaf(Comparator<? super K> c){ 
+    this.c=c; 
+  }
+  // isEmpty: is the given Leaf empty?
+  public boolean isEmpty() {
+    return true;
+  }
+
+  // size: gets the size of this Leaf
+  public int size() {
+    return 0;
+  }
+
+  //containsKey: does this Leaf contain the given key x?  
+  public boolean containsKey(K x) {
+    return false;
+  }
+
+  //get: gets the value of type V mapped to given Key x in this Leaf
+  public V get(K x) {
+    throw 
+     new RuntimeException("called get on an Leaf, no such value");
+  }
+  // remove: Removes given entry from this Leaf mapped to given Key x
+  FMap<K, V> remove(K x) {
+    throw 
+    new RuntimeException("called remove on an Leaf, no such value");
+  }
+  // getKey: gets the Key out of this Leaf
+  K getKey() {
+    throw 
+    new RuntimeException("called getKey on an Leaf, no such value");
+  }
+  // getRest: gets the Rest from this Leaf
+  FMap<K,V> getRest() {
+    throw 
+    new RuntimeException("called getComparator on an EmptyMap, " +
+        "no such value");
+
+  
+}
+  // hasComparator: does this Leaf have a comparator?
+  boolean hasComparator() {
+    return true;
+  }
+  // getComparator: gets the Comparator out of this leaf
+  Comparator<? super K> getComparator() {
+    return this.c;
+  }
+  // insert: inserts Key k and Value v into this Leaf
+  FMap<K, V> insert(K k, V v) {
+    return new Node<K,V>(k, v, this, this);
+  }
+  //iterHelper(): creates a list of keys for the iterator for this Leaf
+  public ArrayList<K> itHelper(){
+   return new ArrayList<K>();
+}
+}
+
+// class representing an FMap with a comparator 
+// that is represented by a Node in a BST
+class Node<K,V> extends FMap<K,V>{
+  K key; // represents the top key in this Node
+  V value; // represents the top value in this Node
+  // INVARIANT: the top key in this tree will always be greater than the
+  // top key in the left tree and less than the top key in the right tree.
+  // also, the left tree is a BST and the right tree is a BST 
+  FMap<K,V> left; // represents the left subtree. 
+  FMap<K,V> right; // represents the right subtree.
+  int size; // represents the size of this Node
+  Comparator<? super K> c; // represents the comparator that is needed to 
+  // sort this BST  
+  Node(K key, V value, FMap<K,V> left, FMap<K,V> right){
+    this.key=key;
+    this.value=value;
+    this.left=left;
+    this.right=right;
+    this.size= 1 + this.left.size() + this.right.size();
+    this.c = this.left.getComparator(); // invariant: cannot create a BST
+     // with different types of Comparators
+  }
+  
+  //isEmpty: is this Node empty?  
+  public boolean isEmpty() {
+    return false;
+  }
+  // size: calculate the size of this Node
+   public int size() {
+     return this.size;
+  }
+  // containsKey: does this Node contain the given key x?
+  public boolean containsKey(K x) {
+    if (this.c.compare(x,this.key)==0){
+      return true;
+      } else if (this.c.compare(x,this.key)<0){
+      return left.containsKey(x);
+    } else return right.containsKey(x);
+  }
+  // get: gets the value of type V mapped to given Key x in this Node
+  public V get(K x) {
+    if (this.c.compare(x,this.key)==0){
+      return this.value;
+      } else if (this.c.compare(x,this.key)<0){
+      return this.left.get(x);
+    } else return this.right.get(x);
+  }
+  // remove: Removes given entry from this Node mapped to given Key x
+  FMap<K,V> remove(K x) {
+    throw new RuntimeException("called remove on an Node"
+        + "for this class");
+  }
+  //getKey: gets the Key out of this Node
+  K getKey() {
+    return this.key;
+  }
+  //getRest: gets the "rest" of this Node
+  FMap<K,V> getRest() {
+    throw new RuntimeException("called getRest on Node, " +
+    		"no such Rest");
+  }
+  //hasComparator: does this Node have a comparator?
+  boolean hasComparator() {
+    return true;
+  }
+  //getComparator: gets the comparator out of this Node
+  Comparator<? super K> getComparator() {
+    return this.c;
+  }
+
+  // insert: inserts Key k and Value v into this Node
+  FMap<K, V> insert(K k, V v) {
+    if (this.c.compare(k,this.key)==0){
+      return new Node<K,V>(k, v, this.left, this.right);
+      } else if (this.c.compare(k,this.key)<0){
+      return new Node<K,V>(this.key, this.value, this.left.insert(k,v), 
+          this.right);
+    } else return new Node<K,V>(this.key, this.value, this.left, 
+        this.right.insert(k,v));
+  }
+  //itHelper: helps create the list of Keys for the iterator for this Node
+  public ArrayList<K> itHelper(){
+    ArrayList<K> listOfKeys = new ArrayList<K>();
+    
+    listOfKeys.add(this.key);
+    listOfKeys.addAll(this.left.itHelper());
+    listOfKeys.addAll(this.right.itHelper());
+    
+    return listOfKeys;
+  }
+
+}
+
+
